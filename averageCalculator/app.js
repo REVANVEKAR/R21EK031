@@ -1,45 +1,76 @@
+require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 
 const app = express();
-
-const PORT = 8000;
-
-const window_size = 10;
+const PORT = 9876;
+const WINDOW_SIZE = 10;
 
 const windows = {
-    prime: [],
-    fibbonaci: [],
-    even: [],
-    random: []
+    p: [],
+    f: [],
+    e: [],
+    r: []
 };
 
 const apiEndpoints = {
-    prime: 'http://20.244.56.144/test/primes',
-    fibbonaci: 'http://20.244.56.144/test/fibonacci',
-    even: 'http://20.244.56.144/test/even',
-    random: 'http://20.244.56.144/test/rand'
+    p: 'http://20.244.56.144/test/primes',
+    f: 'http://20.244.56.144/test/fibonacci',
+    e: 'http://20.244.56.144/test/even',
+    r: 'http://20.244.56.144/test/rand'
 };
 
 const fetchNumbers = async (type) => {
     try {
-        const response = await axios.get(apiEndpoints[type], { timeout: 500 });
+        const response = await axios.get(apiEndpoints[type], {
+            timeout: 500,
+            headers: {
+                'Authorization': `Bearer ${process.env.AUTH_TOKEN}`
+            }
+        });
         return response.data.numbers;
-    } catch (error) {
+    }  catch (error) {
         console.error(`Error fetching ${type} numbers:`, error.message);
         return [];
     }
 };
 
+const updateWindow = (type, numbers) => {
+    const uniqueNumbers = [...new Set(numbers)];
+    const prevWindow = [...windows[type]];
 
+    windows[type] = [...windows[type], ...uniqueNumbers].slice(-WINDOW_SIZE);
+
+    return prevWindow;
+};
 
 const calculateAverage = (numbers) => {
     const sum = numbers.reduce((acc, num) => acc + num, 0);
     return (sum / numbers.length) || 0;
 };
 
+app.get('/numbers/:type', async (req, res) => {
+    const { type } = req.params;
 
+    if (!['p', 'f', 'e', 'r'].includes(type)) {
+        return res.status(400).send({ error: 'Invalid type' });
+    }
 
-app.listen(PORT,()=>{
-    console.log("server running on port 8000");
-})
+    const numbers = await fetchNumbers(type);
+    const windowPrevState = updateWindow(type, numbers);
+    const windowCurrState = windows[type];
+    const avg = calculateAverage(windowCurrState);
+
+    res.json({
+        numbers,
+        windowPrevState,
+        windowCurrState,
+        avg: avg.toFixed(2)
+    });
+
+    
+});
+
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
