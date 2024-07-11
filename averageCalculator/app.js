@@ -25,7 +25,7 @@ const fetchNumbers = async (type) => {
         const response = await axios.get(apiEndpoints[type], {
             timeout: 500,
             headers: {
-                'Authorization': `Bearer ${process.env.AUTH_TOKEN}`
+                'access_token': `Bearer ${process.env.AUTH_TOKEN}`
             }
         });
         return response.data.numbers;
